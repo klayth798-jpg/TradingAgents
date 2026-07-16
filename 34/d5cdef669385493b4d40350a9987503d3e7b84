@@ -1,0 +1,16 @@
+.gitignore
+  h_8ed1f127d9da29 224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "34d5cdef669385493b4d40350a9987503d3e7b84",
+  "prompts": {},
+  "humans": {
+    "h_8ed1f127d9da29": {
+      "author": "ningbeixi <ningbeixi@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
