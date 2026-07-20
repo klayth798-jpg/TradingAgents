@@ -5,6 +5,7 @@ import pandas as pd
 import yfinance as yf
 from dateutil.relativedelta import relativedelta
 
+from .config import get_config
 from .stockstats_utils import (
     StockstatsUtils,
     _assert_ohlcv_not_stale,
@@ -277,6 +278,11 @@ def get_fundamentals(
 ):
     """Get company fundamentals overview from yfinance."""
     canonical = normalize_symbol(ticker)
+    if get_config().get("historical_mode"):
+        return (
+            "DATA_UNAVAILABLE: yfinance company overview is a current snapshot "
+            f"without published_at metadata and is excluded as of {curr_date}."
+        )
     try:
         ticker_obj = yf.Ticker(canonical)
         info = yf_retry(lambda: ticker_obj.info)
@@ -353,7 +359,11 @@ def get_balance_sheet(
         else:
             data = yf_retry(lambda: ticker_obj.balance_sheet)
 
-        data = filter_financials_by_date(data, curr_date)
+        config = get_config()
+        lag = 0
+        if config.get("historical_mode"):
+            lag = int(config.get("fundamentals_publication_lag_days", {}).get(freq.lower(), 45))
+        data = filter_financials_by_date(data, curr_date, publication_lag_days=lag)
 
         if data.empty:
             raise NoMarketDataError(ticker, canonical, "no balance sheet data")
@@ -363,6 +373,8 @@ def get_balance_sheet(
 
         # Add header information
         header = f"# Balance Sheet data for {canonical} ({freq})\n"
+        if lag:
+            header += f"# published_at policy: fiscal period end + {lag} days (conservative estimate)\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
         return header + csv_string
@@ -388,7 +400,11 @@ def get_cashflow(
         else:
             data = yf_retry(lambda: ticker_obj.cashflow)
 
-        data = filter_financials_by_date(data, curr_date)
+        config = get_config()
+        lag = 0
+        if config.get("historical_mode"):
+            lag = int(config.get("fundamentals_publication_lag_days", {}).get(freq.lower(), 45))
+        data = filter_financials_by_date(data, curr_date, publication_lag_days=lag)
 
         if data.empty:
             raise NoMarketDataError(ticker, canonical, "no cash flow data")
@@ -398,6 +414,8 @@ def get_cashflow(
 
         # Add header information
         header = f"# Cash Flow data for {canonical} ({freq})\n"
+        if lag:
+            header += f"# published_at policy: fiscal period end + {lag} days (conservative estimate)\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
         return header + csv_string
@@ -423,7 +441,11 @@ def get_income_statement(
         else:
             data = yf_retry(lambda: ticker_obj.income_stmt)
 
-        data = filter_financials_by_date(data, curr_date)
+        config = get_config()
+        lag = 0
+        if config.get("historical_mode"):
+            lag = int(config.get("fundamentals_publication_lag_days", {}).get(freq.lower(), 45))
+        data = filter_financials_by_date(data, curr_date, publication_lag_days=lag)
 
         if data.empty:
             raise NoMarketDataError(ticker, canonical, "no income statement data")
@@ -433,6 +455,8 @@ def get_income_statement(
 
         # Add header information
         header = f"# Income Statement data for {canonical} ({freq})\n"
+        if lag:
+            header += f"# published_at policy: fiscal period end + {lag} days (conservative estimate)\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
         return header + csv_string

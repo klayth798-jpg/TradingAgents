@@ -3,6 +3,7 @@ from typing import Annotated
 from langchain_core.tools import tool
 
 from tradingagents.dataflows.interface import route_to_vendor
+from tradingagents.dataflows.provenance import annotate_data
 
 
 @tool
@@ -21,7 +22,11 @@ def get_news(
     Returns:
         str: A formatted string containing news data
     """
-    return route_to_vendor("get_news", ticker, start_date, end_date)
+    return annotate_data(
+        route_to_vendor("get_news", ticker, start_date, end_date),
+        source="ticker_news",
+        as_of=end_date,
+    )
 
 @tool
 def get_global_news(
@@ -43,11 +48,16 @@ def get_global_news(
     Returns:
         str: A formatted string containing global news data
     """
-    return route_to_vendor("get_global_news", curr_date, look_back_days, limit)
+    return annotate_data(
+        route_to_vendor("get_global_news", curr_date, look_back_days, limit),
+        source="global_news",
+        as_of=curr_date,
+    )
 
 @tool
 def get_insider_transactions(
     ticker: Annotated[str, "ticker symbol"],
+    as_of: Annotated[str | None, "Point-in-time cutoff; required in historical mode"] = None,
 ) -> str:
     """
     Retrieve insider transaction information about a company.
@@ -57,4 +67,13 @@ def get_insider_transactions(
     Returns:
         str: A report of insider transaction data
     """
-    return route_to_vendor("get_insider_transactions", ticker)
+    from tradingagents.dataflows.config import get_config
+    from tradingagents.dataflows.provenance import historical_source_disabled
+
+    if get_config().get("historical_mode"):
+        return historical_source_disabled("insider_transactions", as_of or "historical cutoff")
+    return annotate_data(
+        route_to_vendor("get_insider_transactions", ticker),
+        source="insider_transactions",
+        as_of=as_of,
+    )

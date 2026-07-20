@@ -3,6 +3,7 @@ from typing import Annotated
 from langchain_core.tools import tool
 
 from tradingagents.dataflows.interface import route_to_vendor
+from tradingagents.dataflows.provenance import annotate_data
 
 
 @tool
@@ -29,7 +30,15 @@ def get_indicators(
     results = []
     for ind in indicators:
         try:
-            results.append(route_to_vendor("get_indicators", symbol, ind, curr_date, look_back_days))
+            results.append(annotate_data(
+                route_to_vendor("get_indicators", symbol, ind, curr_date, look_back_days),
+                source=f"technical_indicator:{ind}",
+                as_of=curr_date,
+            ))
         except ValueError as e:
-            results.append(str(e))
+            results.append(annotate_data(
+                str(e),
+                source=f"technical_indicator:{ind}",
+                as_of=curr_date,
+            ))
     return "\n\n".join(results)

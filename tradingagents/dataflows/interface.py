@@ -167,7 +167,14 @@ def get_vendor(category: str, method: str = None) -> str:
 
 def route_to_vendor(method: str, *args, **kwargs):
     """Route method calls to appropriate vendor implementation with fallback support."""
+    provenance_as_of = kwargs.pop("_as_of", None)
     category = get_category_for_method(method)
+    config = get_config()
+    if config.get("historical_mode") and category == "prediction_markets":
+        from .provenance import historical_source_disabled
+
+        as_of = provenance_as_of or config.get("as_of") or "historical cutoff"
+        return historical_source_disabled("prediction_markets", str(as_of))
     vendor_config = get_vendor(category, method)
     primary_vendors = [v.strip() for v in vendor_config.split(',')]
 

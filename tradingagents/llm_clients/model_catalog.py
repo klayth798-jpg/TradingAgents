@@ -79,6 +79,19 @@ _MINIMAX_MODELS: dict[str, list[ModelOption]] = {
 
 
 MODEL_OPTIONS: ProviderModeOptions = {
+    # Ark model identifiers are endpoint IDs created in the Volcengine console.
+    # Keep the configured endpoint convenient while allowing any other endpoint
+    # ID through the Custom option.
+    "ark": {
+        "quick": [
+            ("Doubao Seed Evolving - Ark endpoint", "ep-20260707164321-hwd8j"),
+            ("Custom endpoint ID", "custom"),
+        ],
+        "deep": [
+            ("Doubao Seed Evolving - Ark endpoint", "ep-20260707164321-hwd8j"),
+            ("Custom endpoint ID", "custom"),
+        ],
+    },
     "openai": {
         "quick": [
             ("GPT-5.4 Mini - Fast, strong coding and tool use", "gpt-5.4-mini"),
@@ -110,7 +123,10 @@ MODEL_OPTIONS: ProviderModeOptions = {
             ("Gemini 3.1 Flash Lite - Most cost-efficient", "gemini-3.1-flash-lite"),
         ],
         "deep": [
-            ("Gemini 3.1 Pro - Reasoning-first, complex workflows (preview)", "gemini-3.1-pro-preview"),
+            (
+                "Gemini 3.1 Pro - Reasoning-first, complex workflows (preview)",
+                "gemini-3.1-pro-preview",
+            ),
             ("Gemini 3.5 Flash - Latest GA, strong agentic + coding", "gemini-3.5-flash"),
         ],
     },
@@ -199,12 +215,6 @@ def get_model_options(provider: str, mode: str) -> list[ModelOption]:
 def get_known_models() -> dict[str, list[str]]:
     """Build known model names from the shared CLI catalog."""
     return {
-        provider: sorted(
-            {
-                value
-                for options in mode_options.values()
-                for _, value in options
-            }
-        )
+        provider: sorted({value for options in mode_options.values() for _, value in options})
         for provider, mode_options in MODEL_OPTIONS.items()
     }

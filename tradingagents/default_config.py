@@ -16,6 +16,7 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_MAX_DEBATE_ROUNDS":    "max_debate_rounds",
     "TRADINGAGENTS_MAX_RISK_ROUNDS":      "max_risk_discuss_rounds",
     "TRADINGAGENTS_CHECKPOINT_ENABLED":   "checkpoint_enabled",
+    "TRADINGAGENTS_HISTORICAL_MODE":      "historical_mode",
     "TRADINGAGENTS_BENCHMARK_TICKER":     "benchmark_ticker",
     "TRADINGAGENTS_TEMPERATURE":          "temperature",
     "TRADINGAGENTS_LLM_MAX_RETRIES":      "llm_max_retries",
@@ -103,6 +104,19 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # Checkpoint/resume: when True, LangGraph saves state after each node
     # so a crashed run can resume from the last successful step.
     "checkpoint_enabled": False,
+    # Strict point-in-time mode for historical analysis/backtests. Live-only
+    # sources are disabled and every agent-facing data payload carries an
+    # explicit as_of marker. Keep False for the normal same-day advisory flow.
+    "historical_mode": False,
+    "as_of": None,
+    "data_provenance_enabled": True,
+    # Financial statements rarely expose a filing timestamp through market-data
+    # APIs. In strict historical mode we prefer a real filing/reported date; when
+    # absent, these conservative lags estimate when a fiscal period was public.
+    "fundamentals_publication_lag_days": {
+        "quarterly": 45,
+        "annual": 90,
+    },
     # Output language for analyst reports and final decision
     # Internal agent debate stays in English for reasoning quality
     "output_language": "English",

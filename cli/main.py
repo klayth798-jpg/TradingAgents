@@ -2,6 +2,7 @@ import datetime
 import os
 import time
 from collections import deque
+from copy import deepcopy
 from functools import wraps
 from pathlib import Path
 
@@ -1109,6 +1110,8 @@ def run_analysis(checkpoint: bool | None = None):
             selections["analysis_date"],
             asset_type=selections["asset_type"],
             instrument_context=instrument_context,
+            historical_mode=bool(config.get("historical_mode")),
+            as_of=selections["analysis_date"],
         )
         # Pass callbacks to graph config for tool execution tracking
         # (LLM tracking is handled separately via LLM constructor)
@@ -1265,6 +1268,72 @@ def run_analysis(checkpoint: bool | None = None):
     display_choice = typer.prompt("\nDisplay full report on screen?", default="Y").strip().upper()
     if display_choice in ("Y", "YES", ""):
         display_complete_report(final_state)
+
+
+@app.command()
+def backtest(
+    ticker: str = typer.Argument(..., help="Ticker to simulate, e.g. AAPL"),
+    start_date: str = typer.Option(..., "--start", help="First analysis date (YYYY-MM-DD)"),
+    end_date: str = typer.Option(..., "--end", help="Last simulation date (YYYY-MM-DD)"),
+    rebalance_days: int = typer.Option(5, min=1, help="Generate one agent signal every N sessions"),
+    initial_cash: float = typer.Option(100_000.0, min=1.0),
+    commission_bps: float = typer.Option(5.0, min=0.0),
+    slippage_bps: float = typer.Option(5.0, min=0.0),
+    analysts: str = typer.Option(
+        "market,news,fundamentals",
+        help="Comma-separated analyst keys. Live social sources are disabled in historical mode.",
+    ),
+    output: Path | None = typer.Option(  # noqa: B008 - Typer declares CLI defaults this way
+        None, help="Directory for summary, fills and equity CSVs"
+    ),
+):
+    """Run strict point-in-time agent analysis and a next-open simulated backtest."""
+    from tradingagents.backtesting import BacktestConfig
+
+    try:
+        start = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+        end = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise typer.BadParameter("dates must use YYYY-MM-DD") from exc
+    if end <= start:
+        raise typer.BadParameter("--end must be after --start")
+
+    selected = [value.strip().lower() for value in analysts.split(",") if value.strip()]
+    build_analyst_execution_plan(selected)  # validates keys and non-empty selection
+
+    config = deepcopy(DEFAULT_CONFIG)
+    config.update({
+        "historical_mode": True,
+        "checkpoint_enabled": False,
+        "memory_log_path": None,
+    })
+    graph = TradingAgentsGraph(selected, config=config, debug=False)
+    console.print(
+        f"[yellow]Generating strict historical signals for {ticker} from "
+        f"{start} to {end}; live social and prediction-market data are disabled.[/yellow]"
+    )
+    result = graph.backtest(
+        ticker,
+        str(start),
+        str(end),
+        rebalance_days=rebalance_days,
+        config=BacktestConfig(
+            initial_cash=initial_cash,
+            commission_bps=commission_bps,
+            slippage_bps=slippage_bps,
+        ),
+    )
+    if output is None:
+        stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        output = Path(config["results_dir"]) / "backtests" / f"{ticker}_{stamp}"
+    summary_path = result.save(output)
+    metrics = result.metrics
+    console.print(f"[green]Backtest complete:[/green] {summary_path}")
+    console.print(
+        f"Return {metrics['total_return']:.2%} | Buy-and-hold "
+        f"{metrics['benchmark_return']:.2%} | Max drawdown "
+        f"{metrics['max_drawdown']:.2%} | Sharpe {metrics['sharpe']:.2f}"
+    )
 
 
 @app.command()

@@ -2,6 +2,7 @@
 family; this guards each provider's resolved config (base URL, subclass, auth,
 Responses API) so a future edit can't silently break one.
 """
+
 import pytest
 
 from tradingagents.llm_clients.openai_client import (
@@ -16,6 +17,7 @@ from tradingagents.llm_clients.openai_client import (
 @pytest.mark.unit
 def test_registry_membership():
     assert is_openai_compatible("openai")
+    assert is_openai_compatible("ark")
     assert is_openai_compatible("openai_compatible")  # the generic endpoint
     # native (different API) clients are intentionally NOT in the registry
     assert not is_openai_compatible("anthropic")
@@ -24,23 +26,37 @@ def test_registry_membership():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("provider,base_url,chat_class,responses", [
-    ("openai", None, NormalizedChatOpenAI, True),
-    ("xai", "https://api.x.ai/v1", NormalizedChatOpenAI, False),
-    ("deepseek", "https://api.deepseek.com", DeepSeekChatOpenAI, False),
-    ("qwen", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1", NormalizedChatOpenAI, False),
-    ("qwen-cn", "https://dashscope.aliyuncs.com/compatible-mode/v1", NormalizedChatOpenAI, False),
-    ("glm", "https://api.z.ai/api/paas/v4/", NormalizedChatOpenAI, False),
-    ("glm-cn", "https://open.bigmodel.cn/api/paas/v4/", NormalizedChatOpenAI, False),
-    ("minimax", "https://api.minimax.io/v1", MinimaxChatOpenAI, False),
-    ("minimax-cn", "https://api.minimaxi.com/v1", MinimaxChatOpenAI, False),
-    ("openrouter", "https://openrouter.ai/api/v1", NormalizedChatOpenAI, False),
-    ("mistral", "https://api.mistral.ai/v1", NormalizedChatOpenAI, False),
-    ("kimi", "https://api.moonshot.ai/v1", NormalizedChatOpenAI, False),
-    ("groq", "https://api.groq.com/openai/v1", NormalizedChatOpenAI, False),
-    ("nvidia", "https://integrate.api.nvidia.com/v1", NormalizedChatOpenAI, False),
-    ("ollama", "http://localhost:11434/v1", NormalizedChatOpenAI, False),
-])
+@pytest.mark.parametrize(
+    "provider,base_url,chat_class,responses",
+    [
+        ("openai", None, NormalizedChatOpenAI, True),
+        ("ark", "https://ark-cn-beijing.bytedance.net/api/v3", NormalizedChatOpenAI, False),
+        ("xai", "https://api.x.ai/v1", NormalizedChatOpenAI, False),
+        ("deepseek", "https://api.deepseek.com", DeepSeekChatOpenAI, False),
+        (
+            "qwen",
+            "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            NormalizedChatOpenAI,
+            False,
+        ),
+        (
+            "qwen-cn",
+            "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            NormalizedChatOpenAI,
+            False,
+        ),
+        ("glm", "https://api.z.ai/api/paas/v4/", NormalizedChatOpenAI, False),
+        ("glm-cn", "https://open.bigmodel.cn/api/paas/v4/", NormalizedChatOpenAI, False),
+        ("minimax", "https://api.minimax.io/v1", MinimaxChatOpenAI, False),
+        ("minimax-cn", "https://api.minimaxi.com/v1", MinimaxChatOpenAI, False),
+        ("openrouter", "https://openrouter.ai/api/v1", NormalizedChatOpenAI, False),
+        ("mistral", "https://api.mistral.ai/v1", NormalizedChatOpenAI, False),
+        ("kimi", "https://api.moonshot.ai/v1", NormalizedChatOpenAI, False),
+        ("groq", "https://api.groq.com/openai/v1", NormalizedChatOpenAI, False),
+        ("nvidia", "https://integrate.api.nvidia.com/v1", NormalizedChatOpenAI, False),
+        ("ollama", "http://localhost:11434/v1", NormalizedChatOpenAI, False),
+    ],
+)
 def test_registry_spec(provider, base_url, chat_class, responses):
     spec = OPENAI_COMPATIBLE_PROVIDERS[provider]
     assert spec.base_url == base_url

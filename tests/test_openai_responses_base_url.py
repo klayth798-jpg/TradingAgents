@@ -1,5 +1,4 @@
-"""The Responses API only exists on native OpenAI; a custom base_url on the
-openai provider must fall back to Chat Completions (#1024)."""
+"""The Responses API is limited to native OpenAI base URLs."""
 
 from __future__ import annotations
 
@@ -41,3 +40,9 @@ class ResponsesApiSelectionTests:
         ).get_llm()
         # use_responses_api should be absent/False so the client speaks Chat Completions.
         assert getattr(llm, "use_responses_api", False) is False
+
+    def test_ark_uses_chat_completions(self, monkeypatch):
+        monkeypatch.setenv("ARK_API_KEY", "ark-test")
+        llm = OpenAIClient("ep-20260707164321-hwd8j", provider="ark").get_llm()
+        assert getattr(llm, "use_responses_api", False) is False
+        assert str(llm.openai_api_base) == "https://ark-cn-beijing.bytedance.net/api/v3"

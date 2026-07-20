@@ -357,9 +357,18 @@ class TradingAgentsGraph:
             f"debate={self.config['max_debate_rounds']}",
             f"risk={self.config['max_risk_discuss_rounds']}",
             f"asset={asset_type}",
+            f"historical={bool(self.config.get('historical_mode'))}",
         ])
 
-    def propagate(self, company_name, trade_date, asset_type: str = "stock"):
+    def propagate(
+        self,
+        company_name,
+        trade_date,
+        asset_type: str = "stock",
+        *,
+        store_artifacts: bool = True,
+        resolve_memory: bool = True,
+    ):
         """Run the trading agents graph for a company on a specific date.
 
         ``asset_type`` selects between the stock pipeline (default) and the
@@ -372,10 +381,19 @@ class TradingAgentsGraph:
         self.ticker = company_name
 
         # Resolve any pending memory-log entries for this ticker before the pipeline runs.
-        self._resolve_pending_entries(company_name)
+        if resolve_memory:
+            self._resolve_pending_entries(company_name)
+
+        # The data router is process-global for backwards compatibility. Keep
+        # its point-in-time cutoff synchronized with this run so every tool can
+        # enforce the same boundary and emit the same as_of marker.
+        set_config({
+            "historical_mode": bool(self.config.get("historical_mode")),
+            "as_of": str(trade_date),
+        })
 
         # Recompile with a checkpointer if the user opted in.
-        if self.config.get("checkpoint_enabled"):
+        if self.config.get("checkpoint_enabled") and store_artifacts:
             self._checkpointer_ctx = get_checkpointer(
                 self.config["data_cache_dir"], company_name
             )
@@ -394,7 +412,12 @@ class TradingAgentsGraph:
                 logger.info("Starting fresh for %s on %s", company_name, trade_date)
 
         try:
-            return self._run_graph(company_name, trade_date, asset_type=asset_type)
+            return self._run_graph(
+                company_name,
+                trade_date,
+                asset_type=asset_type,
+                store_artifacts=store_artifacts,
+            )
         finally:
             if self._checkpointer_ctx is not None:
                 self._checkpointer_ctx.__exit__(None, None, None)
@@ -416,11 +439,18 @@ class TradingAgentsGraph:
             )
         return write_report_tree(final_state, ticker, save_path)
 
-    def _run_graph(self, company_name, trade_date, asset_type: str = "stock"):
+    def _run_graph(
+        self,
+        company_name,
+        trade_date,
+        asset_type: str = "stock",
+        *,
+        store_artifacts: bool = True,
+    ):
         """Execute the graph and write the resulting state to disk and memory log."""
         # Initialize state — inject memory log context for PM and the
         # deterministically resolved instrument identity for all agents.
-        past_context = self.memory_log.get_past_context(company_name)
+        past_context = self.memory_log.get_past_context(company_name) if store_artifacts else ""
         instrument_context = self.resolve_instrument_context(company_name, asset_type)
         init_agent_state = self.propagator.create_initial_state(
             company_name,
@@ -428,12 +458,14 @@ class TradingAgentsGraph:
             asset_type=asset_type,
             past_context=past_context,
             instrument_context=instrument_context,
+            historical_mode=bool(self.config.get("historical_mode")),
+            as_of=str(trade_date),
         )
         args = self.propagator.get_graph_args()
 
         # Inject thread_id so same ticker+date+graph-shape resumes; a different
         # date or graph shape starts fresh (#1089).
-        if self.config.get("checkpoint_enabled"):
+        if self.config.get("checkpoint_enabled") and store_artifacts:
             tid = thread_id(company_name, str(trade_date), self._run_signature(asset_type))
             args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = tid
 
@@ -463,23 +495,40 @@ class TradingAgentsGraph:
         self.curr_state = final_state
 
         # Log state to disk.
-        self._log_state(trade_date, final_state)
+        if store_artifacts:
+            self._log_state(trade_date, final_state)
 
-        # Store decision for deferred reflection on the next same-ticker run.
-        self.memory_log.store_decision(
-            ticker=company_name,
-            trade_date=trade_date,
-            final_trade_decision=final_state["final_trade_decision"],
-        )
+            # Store decision for deferred reflection on the next same-ticker run.
+            self.memory_log.store_decision(
+                ticker=company_name,
+                trade_date=trade_date,
+                final_trade_decision=final_state["final_trade_decision"],
+            )
 
         # Clear checkpoint on successful completion to avoid stale state.
-        if self.config.get("checkpoint_enabled"):
+        if self.config.get("checkpoint_enabled") and store_artifacts:
             clear_checkpoint(
                 self.config["data_cache_dir"], company_name, str(trade_date),
                 self._run_signature(asset_type),
             )
 
         return final_state, self.process_signal(final_state["final_trade_decision"])
+
+    def backtest(
+        self,
+        ticker: str,
+        start_date: str,
+        end_date: str,
+        **kwargs,
+    ):
+        """Run strict historical analyses and simulate next-open execution.
+
+        See :func:`tradingagents.backtesting.run_agent_backtest` for injectable
+        prices/signal providers and portfolio-cost configuration.
+        """
+        from tradingagents.backtesting import run_agent_backtest
+
+        return run_agent_backtest(self, ticker, start_date, end_date, **kwargs)
 
     def _log_state(self, trade_date, final_state):
         """Log the final state to a JSON file."""

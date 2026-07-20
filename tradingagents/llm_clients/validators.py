@@ -6,8 +6,15 @@ from .model_catalog import get_known_models
 # OpenAI-compatible endpoints serving many models), so any model string is
 # accepted without warning.
 _ANY_MODEL_PROVIDERS = (
-    "ollama", "openrouter", "openai_compatible",
-    "mistral", "kimi", "groq", "nvidia", "bedrock",
+    "ollama",
+    "openrouter",
+    "openai_compatible",
+    "mistral",
+    "kimi",
+    "groq",
+    "nvidia",
+    "bedrock",
+    "ark",
 )
 
 VALID_MODELS = {

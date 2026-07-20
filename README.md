@@ -95,7 +95,7 @@ Our framework decomposes complex trading tasks into specialized roles.
 
 ### Risk Management and Portfolio Manager
 - Continuously evaluates portfolio risk by assessing market volatility, liquidity, and other risk factors. The risk management team evaluates and adjusts trading strategies, providing assessment reports to the Portfolio Manager for final decision.
-- The Portfolio Manager approves/rejects the transaction proposal. If approved, the order will be sent to the simulated exchange and executed.
+- The Portfolio Manager produces the final recommendation. The live-analysis product does not connect to a broker or place orders; execution is left to the user. Historical recommendations can be evaluated separately with the built-in simulator described below.
 
 <p align="center">
   <img src="assets/risk.png" width="70%" style="display: inline-block; margin: 0 2%;">
@@ -141,6 +141,7 @@ TradingAgents supports multiple LLM providers. Set the API key for your chosen p
 
 ```bash
 export OPENAI_API_KEY=...          # OpenAI (GPT)
+export ARK_API_KEY=...             # Volcengine Ark (Doubao)
 export GOOGLE_API_KEY=...          # Google (Gemini)
 export ANTHROPIC_API_KEY=...       # Anthropic (Claude)
 export XAI_API_KEY=...             # xAI (Grok)
@@ -156,6 +157,11 @@ export ALPHA_VANTAGE_API_KEY=...   # Alpha Vantage
 ```
 
 For Azure OpenAI, copy `.env.enterprise.example` to `.env.enterprise` and fill in your credentials.
+
+For Volcengine Ark / Doubao, set `llm_provider: "ark"`, use the Ark endpoint ID
+(for example `ep-...`) as both model names, and keep the default backend URL
+`https://ark-cn-beijing.bytedance.net/api/v3`. This provider uses Ark's
+OpenAI-compatible Chat Completions API.
 
 For AWS Bedrock, install the extra with `pip install ".[bedrock]"`, set `llm_provider: "bedrock"`, configure AWS credentials (environment variables, `~/.aws/credentials`, or an IAM role) and `AWS_DEFAULT_REGION`, and use a Bedrock model ID, e.g. `us.anthropic.claude-opus-4-8-v1:0`.
 
@@ -205,7 +211,7 @@ An interface will appear showing results as they load, letting you track the age
 
 ### Implementation Details
 
-We built TradingAgents with LangGraph to ensure flexibility and modularity. The framework supports multiple LLM providers: OpenAI, Google, Anthropic, xAI, DeepSeek, Qwen (Alibaba DashScope, international and China endpoints), GLM (Zhipu), MiniMax (global + China), OpenRouter, Ollama for local models, and Azure OpenAI for enterprise.
+We built TradingAgents with LangGraph to ensure flexibility and modularity. The framework supports multiple LLM providers: OpenAI, Volcengine Ark (Doubao), Google, Anthropic, xAI, DeepSeek, Qwen (Alibaba DashScope, international and China endpoints), GLM (Zhipu), MiniMax (global + China), OpenRouter, Ollama for local models, and Azure OpenAI for enterprise.
 
 ### Python Usage
 
@@ -229,7 +235,7 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 
 config = DEFAULT_CONFIG.copy()
-config["llm_provider"] = "openai"        # e.g. openai, google, anthropic, deepseek, groq, ollama; openai_compatible covers any OpenAI-compatible endpoint (vLLM, LM Studio, llama.cpp, ...)
+config["llm_provider"] = "openai"        # e.g. openai, ark, google, anthropic, deepseek, groq, ollama; openai_compatible covers any OpenAI-compatible endpoint (vLLM, LM Studio, llama.cpp, ...)
 config["deep_think_llm"] = "gpt-5.5"     # Model for complex reasoning
 config["quick_think_llm"] = "gpt-5.4-mini" # Model for quick tasks
 config["max_debate_rounds"] = 2
@@ -269,13 +275,71 @@ ta = TradingAgentsGraph(config=config)
 _, decision = ta.propagate("NVDA", "2026-01-15")
 ```
 
+## Strict historical mode and simulated backtesting
+
+Normal `analyze` runs are designed for same-day advice and may use live social
+and prediction-market context. Backtests automatically enable strict
+`historical_mode`:
+
+- Every agent-facing data payload carries a `DATA_PROVENANCE` line with its
+  source, `as_of` cutoff, and live/historical mode.
+- StockTwits, Reddit, Polymarket, current company-overview snapshots, and
+  current insider feeds are disabled because the configured vendors do not
+  provide point-in-time archives.
+- Price, news, macro, and technical data are cut off at the analysis date.
+- Financial statements prefer real filing/reported dates when a vendor supplies
+  them. If the timestamp is unavailable, quarterly and annual statements use
+  conservative 45/90-day publication lags and label that date as an estimate.
+- Raw news and social text is converted to bounded structured evidence. Lines
+  that look like embedded model instructions are discarded before the decision
+  prompt is built.
+
+The simulator is long-only and uses whole shares. A signal produced after a
+session close executes at the **next session open**, with configurable
+commission and slippage. `Hold` preserves the current position; the other four
+ratings map to configurable target weights. No broker connection or real order
+placement is included.
+
+```bash
+tradingagents backtest AAPL \
+  --start 2025-01-01 \
+  --end 2025-06-30 \
+  --rebalance-days 5 \
+  --initial-cash 100000 \
+  --commission-bps 5 \
+  --slippage-bps 5
+```
+
+Backtests call the selected LLM agents once per rebalance date, so narrow date
+ranges or a larger `--rebalance-days` value are recommended while iterating.
+The output directory contains `summary.json`, `signals.json`, `fills.csv`, and
+`equity_curve.csv`.
+
+Programmatic usage supports injected prices and signal providers for fast,
+deterministic replays:
+
+```python
+from tradingagents.backtesting import BacktestConfig
+
+config = DEFAULT_CONFIG.copy()
+config["historical_mode"] = True
+config["memory_log_path"] = None
+ta = TradingAgentsGraph(config=config)
+result = ta.backtest(
+    "AAPL", "2025-01-01", "2025-06-30",
+    rebalance_days=5,
+    config=BacktestConfig(initial_cash=100_000, commission_bps=5, slippage_bps=5),
+)
+print(result.metrics)
+```
+
 ## Reproducibility
 
 TradingAgents is LLM-driven, so two runs of the same ticker and date can differ. This is expected for a research tool built on language models, not a defect. The variation comes from a few distinct sources, and it helps to separate them.
 
 Language model sampling is non-deterministic. Even at a fixed temperature, providers do not guarantee byte-identical output across calls, and reasoning models (the default GPT-5.x family, and any thinking-mode model) vary the most because their internal reasoning is itself sampled.
 
-Live data moves. News, StockTwits, and Reddit return different content as time passes, so a run today sees different inputs than a run last week even for the same historical trade date. Pin the analysis date to hold the price and indicator window fixed, but the social and news sources still reflect "now".
+Live data moves. A normal `analyze` run may return different news, StockTwits, and Reddit content even for the same past trade date. Use `historical_mode` or the `backtest` command when point-in-time behavior is required; those paths disable live-only sources instead of substituting present-day content.
 
 To reduce variation you can lower the sampling temperature. Set `temperature` in your config (or `TRADINGAGENTS_TEMPERATURE` in `.env`); lower values make models that honor it more repeatable. The current curated models are reasoning-first and largely ignore temperature, so for tighter reproducibility use a non-reasoning model, which you can set explicitly via the Custom model ID option.
 

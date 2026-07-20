@@ -13,6 +13,7 @@ def pytest_configure(config):
 
 _API_KEY_ENV_VARS = (
     "OPENAI_API_KEY",
+    "ARK_API_KEY",
     "GOOGLE_API_KEY",
     "ANTHROPIC_API_KEY",
     "XAI_API_KEY",
