@@ -1,0 +1,102 @@
+.env.example
+  s_3957f7271e9a50::t_90949e8c33c65d 3,53-57,75-77
+README.md
+  s_3957f7271e9a50::t_27ca62c57f5759 98,144,161-165,214,238,278-335,342
+cli/main.py
+  s_3957f7271e9a50::t_acc31e10db7bf4 5,1113-1114,1273-1338
+cli/utils.py
+  s_3957f7271e9a50::t_8430cfbd32ee18 95,114-116,176,202-212,219,261-262,275-281,346,359,406-409,455-461,479-485,501-507,529-535,558-564,587-593,645,654,657-662,665,694-700,708-714
+tests/conftest.py
+  s_3957f7271e9a50::t_ffec15e8c5b22e 16
+tests/test_api_key_env.py
+  s_3957f7271e9a50::t_86e69a052046ad 21-35,43-54,85
+tests/test_backtesting.py
+  s_3957f7271e9a50::t_58064af0286cbe 1-65
+tests/test_external_evidence.py
+  s_3957f7271e9a50::t_ee5f33a667a731 1-32
+tests/test_historical_mode.py
+  s_3957f7271e9a50::t_4a25d70bd1caf6 1-91
+tests/test_openai_responses_base_url.py
+  s_3957f7271e9a50::t_081e84ac0b5774 1,43-48
+tests/test_provider_registry.py
+  s_3957f7271e9a50::t_151996f1b69d6f 5,20,29-59
+tradingagents/agents/analysts/news_analyst.py
+  s_3957f7271e9a50::t_284c96a1addc24 1,12-15,21,31-61,64
+tradingagents/agents/analysts/sentiment_analyst.py
+  s_3957f7271e9a50::t_0226718a21c84b 8-10,39-42,47,70,77-98,107,157,160-179
+tradingagents/agents/utils/agent_states.py
+  s_3957f7271e9a50::t_813bac951b0df3 52-53
+tradingagents/agents/utils/core_stock_tools.py
+  s_3957f7271e9a50::t_4d06dfea18997f 6,25-29
+tradingagents/agents/utils/external_evidence.py
+  s_3957f7271e9a50::t_0550b56df6639e 1-91
+tradingagents/agents/utils/fundamental_data_tools.py
+  s_3957f7271e9a50::t_0685b2420a9663 6,23-27,46-50,69-73,92-96
+tradingagents/agents/utils/macro_data_tools.py
+  s_3957f7271e9a50::t_b1ebcdcbf590f7 6,37-41
+tradingagents/agents/utils/market_data_validation_tools.py
+  s_3957f7271e9a50::t_bae417647fe151 6,24-28
+tradingagents/agents/utils/news_data_tools.py
+  s_3957f7271e9a50::t_be1cea72a25232 6,25-29,51-55,60,70-79
+tradingagents/agents/utils/prediction_markets_tools.py
+  s_3957f7271e9a50::t_3dc59b6d27b860 6,17,33-37
+tradingagents/agents/utils/technical_indicators_tools.py
+  s_3957f7271e9a50::t_ad07d22341ad27 6,33-37,39-43
+tradingagents/backtesting/__init__.py
+  s_3957f7271e9a50::t_5c93a24705dbc5 1-33
+tradingagents/backtesting/engine.py
+  s_3957f7271e9a50::t_6ebbed31666d93 1-272
+tradingagents/backtesting/runner.py
+  s_3957f7271e9a50::t_8b80408960cf17 1-69
+tradingagents/dataflows/alpha_vantage_fundamentals.py
+  s_3957f7271e9a50::t_177b8b1733375c 2,5-23,27,41,44-58,73-77
+tradingagents/dataflows/interface.py
+  s_3957f7271e9a50::t_83117b50137f0a 170,172-177
+tradingagents/dataflows/market_data_validator.py
+  s_3957f7271e9a50::t_3f37a639c44c58 55
+tradingagents/dataflows/polymarket.py
+  s_3957f7271e9a50::t_43b87d955a3df9 131
+tradingagents/dataflows/provenance.py
+  s_3957f7271e9a50::t_cff9a47530b470 1-46
+tradingagents/dataflows/stockstats_utils.py
+  s_3957f7271e9a50::t_734c60d92bd1d2 195-200,203-205,210-212
+tradingagents/dataflows/y_finance.py
+  s_3957f7271e9a50::t_37a0f45e7967a3 8,281-285,362-366,376-377,403-407,417-418,444-448,458-459
+tradingagents/default_config.py
+  s_3957f7271e9a50::t_0c0535699cbd60 19,107-119
+tradingagents/graph/propagation.py
+  s_3957f7271e9a50::t_ea0f62c460f8f9 25-26,42-43
+tradingagents/graph/trading_graph.py
+  s_3957f7271e9a50::t_846c8d9574c129 360,363-371,384-393,396,415-420,442-449,453,461-462,468,498-506,509,517-532
+tradingagents/llm_clients/api_key_env.py
+  s_3957f7271e9a50::t_25a0871a7ed2e7 15-19,21-23,26-30,35-38,40
+tradingagents/llm_clients/model_catalog.py
+  s_3957f7271e9a50::t_4e56b8392ce9a0 82-94,126-129,218
+tradingagents/llm_clients/openai_client.py
+  s_3957f7271e9a50::t_3c9b0e104260f8 119,165-172,204-210,217-229,231-240,274
+tradingagents/llm_clients/validators.py
+  s_3957f7271e9a50::t_c85a101516c905 9-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1eefaa7f6d9cc130f3003b06f5965e1a8a965035",
+  "prompts": {},
+  "humans": {
+    "h_8ed1f127d9da29": {
+      "author": "ningbeixi <ningbeixi@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_3957f7271e9a50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6aef-1006-7b83-b371-f3c61b6c6865",
+        "model": "unknown"
+      },
+      "human_author": "ningbeixi <ningbeixi@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
